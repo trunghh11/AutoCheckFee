@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool Tính Doanh Thu Shopee (Chi Tiết Thuế)</title>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f2f5;
+            color: #333;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #ee4d2d; 
+            margin-bottom: 25px;
+        }
+        .description {
+            background-color: #e8f0fe;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+        /* Ẩn input mặc định */
+        input[type="file"] {
+            display: none;
+        }
+        
+        .upload-area {
+            border: 2px dashed #bdc3c7;
+            padding: 40px;
+            text-align: center;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background-color: #fafafa;
+        }
+        .upload-area:hover {
+            border-color: #ee4d2d;
+            background-color: #fff5f2;
+        }
+        .btn-upload {
+            background-color: #ee4d2d;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 10px;
+            pointer-events: none; /* Chặn click đúp */
+        }
+        #output {
+            margin-top: 30px;
+        }
+        
+        /* Card Style */
+        .card {
+            background: #fff;
+            border: 1px solid #e1e4e8;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .card-header {
+            padding: 15px 20px;
+            font-weight: bold;
+            font-size: 1.1em;
+            color: #2c3e50;
+            border-bottom: 1px solid #e1e4e8;
+        }
+        .summary-card {
+            border: 2px solid #2196F3;
+            box-shadow: 0 4px 8px rgba(33, 150, 243, 0.15);
+        }
+        .summary-card .card-header {
+            background-color: #e3f2fd;
+            color: #0d47a1;
+            font-size: 1.25em;
+            text-transform: uppercase;
+        }
+        .card-body {
+            padding: 15px 20px;
+        }
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px dashed #eee;
+        }
+        .metric-row:last-child {
+            border-bottom: none;
+        }
+        .metric-value {
+            font-family: "Consolas", "Monaco", monospace;
+            font-weight: bold;
+            font-size: 1.05em;
+        }
+        
+        .val-revenue { color: #2196F3; } 
+        .val-refund { color: #F44336; }  
+        .val-settlement { color: #4CAF50; } 
+        .val-platform { color: #FF9800; }   
+        
+        .error-msg {
+            color: #d32f2f;
+            background-color: #ffebee;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            display: none;
+            text-align: center;
+        }
+        .section-title {
+            margin: 30px 0 15px;
+            font-weight: bold;
+            color: #666;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Công Cụ Tính Toán Doanh Thu Shopee</h1>
+    
+    <div class="description">
+        <strong>Hướng dẫn:</strong> Tải file <em>Income...xlsx</em> từ Shopee, upload vào ô dưới. <br>
+        Tool sẽ tự lọc đơn "Order" và tính toán chi tiết từng loại thuế.
+    </div>
+
+    <div class="upload-area" id="drop-zone">
+        <div style="font-size: 40px; margin-bottom: 10px;">📂</div>
+        <p style="margin: 0; font-weight: 500;">Kéo thả file Excel vào đây</p>
+        <p style="margin: 5px 0 15px; color: #888; font-size: 0.9em;">hoặc nhấn nút bên dưới</p>
+        <label class="btn-upload">Chọn File Báo Cáo</label>
+        <input type="file" id="fileInput" accept=".xlsx, .xls, .csv">
+    </div>
+
+    <div id="error-msg" class="error-msg"></div>
+    <div id="output"></div>
+</div>
+
+<script>
+    const fileInput = document.getElementById('fileInput');
+    const outputDiv = document.getElementById('output');
+    const errorDiv = document.getElementById('error-msg');
+    const dropZone = document.getElementById('drop-zone');
+
+    const formatCurrency = (amount) => {
+        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+    };
+
+    const processFile = (file) => {
+        outputDiv.innerHTML = '<p style="text-align:center; color:#666;">⏳ Đang xử lý dữ liệu...</p>';
+        errorDiv.style.display = 'none';
+
+        const reader = new FileReader();
+        
+        reader.onload = (e) => {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+
+                let sheetName = workbook.SheetNames.find(n => n.toLowerCase().includes("doanh thu"));
+                if (!sheetName) sheetName = workbook.SheetNames[0];
+
+                const worksheet = workbook.Sheets[sheetName];
+                const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                let headerRowIndex = -1;
+                for (let i = 0; i < Math.min(rawData.length, 50); i++) {
+                    const rowStr = JSON.stringify(rawData[i]);
+                    if (rowStr && rowStr.includes("Mã giao dịch") && rowStr.includes("Ngày đặt hàng")) {
+                        headerRowIndex = i;
+                        break;
+                    }
+                }
+
+                if (headerRowIndex === -1) {
+                    throw new Error("Không tìm thấy dòng tiêu đề hợp lệ. Vui lòng kiểm tra file.");
+                }
+
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { range: headerRowIndex });
+
+                // Khởi tạo biến
+                const results = {};
+                const grandTotal = {
+                    refundAmount: 0,
+                    settlementRevenue: 0,
+                    totalSettlement: 0,
+                    affiliateFee: 0,
+                    taxGTGT: 0, // Tách thuế GTGT
+                    taxTNCN: 0  // Tách thuế TNCN
+                };
+
+                jsonData.forEach(row => {
+                    let orderType = row["Đơn hàng / Sản phẩm"];
+                    if (orderType !== "Order") return;
+
+                    let dateVal = row["Ngày đặt hàng"]; 
+                    if (!dateVal) return;
+
+                    let dateObj;
+                    if (typeof dateVal === 'number') {
+                         dateObj = XLSX.SSF.parse_date_code(dateVal);
+                         dateObj = new Date(dateObj.y, dateObj.m - 1, dateObj.d);
+                    } else {
+                        dateObj = new Date(dateVal);
+                    }
+                    
+                    if (isNaN(dateObj.getTime())) return;
+
+                    const monthKey = `Tháng ${dateObj.getMonth() + 1}/${dateObj.getFullYear()}`;
+
+                    if (!results[monthKey]) {
+                        results[monthKey] = {
+                            refundAmount: 0, 
+                            settlementRevenue: 0, 
+                            totalSettlement: 0, 
+                            affiliateFee: 0, 
+                            taxGTGT: 0, 
+                            taxTNCN: 0 
+                        };
+                    }
+
+                    const getNum = (key) => {
+                        let val = row[key];
+                        if (typeof val === 'number') return val;
+                        if (typeof val === 'string') {
+                            val = parseFloat(val.replace(/,/g, ''));
+                            return isNaN(val) ? 0 : val;
+                        }
+                        return 0;
+                    };
+
+                    // --- TÍNH TOÁN ---
+                    const valHoanLai = getNum("Số tiền hoàn lại");
+                    const refundVal = valHoanLai < 0 ? valHoanLai : 0;
+
+                    const valGiaSP = getNum("Giá sản phẩm");
+                    const valVoucherNB = getNum("Mã ưu đãi do Người Bán chịu");
+                    const valVoucherDongTaiTro = getNum("Mã ưu đãi Đồng Tài Trợ do Người Bán chịu");
+                    const valXuNB = getNum("Mã hoàn xu do Người Bán chịu");
+                    const valXuDongTaiTro = getNum("Mã hoàn xu Đồng Tài Trợ do Người Bán chịu");
+                    const currentRev = valGiaSP + valHoanLai + valVoucherNB + valVoucherDongTaiTro + valXuNB + valXuDongTaiTro;
+
+                    const currentSettlement = getNum("Tổng tiền đã thanh toán");
+                    const currentAffiliate = getNum("Phí hoa hồng Tiếp thị liên kết");
+                    
+                    // Tách riêng thuế
+                    const currentTaxGTGT = getNum("Thuế GTGT");
+                    const currentTaxTNCN = getNum("Thuế TNCN");
+
+                    // Cộng vào Tháng
+                    results[monthKey].refundAmount += refundVal;
+                    results[monthKey].settlementRevenue += currentRev;
+                    results[monthKey].totalSettlement += currentSettlement;
+                    results[monthKey].affiliateFee += currentAffiliate;
+                    results[monthKey].taxGTGT += currentTaxGTGT;
+                    results[monthKey].taxTNCN += currentTaxTNCN;
+
+                    // Cộng vào Tổng Hợp
+                    grandTotal.refundAmount += refundVal;
+                    grandTotal.settlementRevenue += currentRev;
+                    grandTotal.totalSettlement += currentSettlement;
+                    grandTotal.affiliateFee += currentAffiliate;
+                    grandTotal.taxGTGT += currentTaxGTGT;
+                    grandTotal.taxTNCN += currentTaxTNCN;
+                });
+
+                renderResults(results, grandTotal);
+
+            } catch (err) {
+                console.error(err);
+                errorDiv.innerText = "Lỗi: " + err.message;
+                errorDiv.style.display = 'block';
+                outputDiv.innerHTML = '';
+            }
+        };
+
+        reader.readAsArrayBuffer(file);
+    };
+
+    const renderResults = (results, grandTotal) => {
+        let html = '';
+
+        // --- Render Phần Tổng Hợp ---
+        // CT: Doanh thu - Số tiền quyết toán + Phí Affiliate + Thuế GTGT + Thuế TNCN
+        const grandPlatformFee = grandTotal.settlementRevenue - grandTotal.totalSettlement + grandTotal.affiliateFee + grandTotal.taxGTGT + grandTotal.taxTNCN;
+
+        html += `
+            <div class="card summary-card">
+                <div class="card-header">
+                    <span>📊 TỔNG HỢP TOÀN BỘ (Tất cả các tháng)</span>
+                </div>
+                <div class="card-body">
+                    <div class="metric-row">
+                        <span class="metric-label">Tổng doanh thu quyết toán:</span>
+                        <span class="metric-value val-revenue">${formatCurrency(grandTotal.settlementRevenue)}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Tổng Số tiền hàng bán trả lại:</span>
+                        <span class="metric-value val-refund">${formatCurrency(grandTotal.refundAmount)}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">(Tổng) Số tiền quyết toán:</span>
+                        <span class="metric-value val-settlement">${formatCurrency(grandTotal.totalSettlement)}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">(Tổng) Phí Affiliate:</span>
+                        <span class="metric-value">${formatCurrency(grandTotal.affiliateFee)}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">(Tổng) Thuế GTGT:</span>
+                        <span class="metric-value">${formatCurrency(grandTotal.taxGTGT)}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">(Tổng) Thuế TNCN:</span>
+                        <span class="metric-value">${formatCurrency(grandTotal.taxTNCN)}</span>
+                    </div>
+                    
+                    <div class="metric-row" style="background-color: #e3f2fd; margin: 10px -20px -15px -20px; padding: 15px 20px; border-top: 1px solid #bbdefb;">
+                        <span class="metric-label" style="font-weight:bold; color:#0d47a1;">(Tổng) Chi phí nền tảng:</span>
+                        <span class="metric-value val-platform" style="font-size:1.2em;">${formatCurrency(grandPlatformFee)}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="section-title">CHI TIẾT THEO THÁNG</div>
+        `;
+
+        // --- Render Chi Tiết Các Tháng ---
+        const sortedKeys = Object.keys(results).sort((a, b) => {
+            const [mA, yA] = a.replace('Tháng ', '').split('/').map(Number);
+            const [mB, yB] = b.replace('Tháng ', '').split('/').map(Number);
+            if (yA !== yB) return yA - yB;
+            return mA - mB;
+        });
+
+        if (sortedKeys.length === 0) {
+            outputDiv.innerHTML = '<div style="text-align:center; padding:20px;">Không có dữ liệu phù hợp.</div>';
+            return;
+        }
+
+        sortedKeys.forEach(key => {
+            const data = results[key];
+            const platformFee = data.settlementRevenue - data.totalSettlement + data.affiliateFee + data.taxGTGT + data.taxTNCN;
+
+            html += `
+                <div class="card">
+                    <div class="card-header">
+                        <span>🗓️ ${key}</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="metric-row">
+                            <span class="metric-label">Doanh thu quyết toán:</span>
+                            <span class="metric-value val-revenue">${formatCurrency(data.settlementRevenue)}</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Số tiền hàng bán trả lại:</span>
+                            <span class="metric-value val-refund">${formatCurrency(data.refundAmount)}</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Số tiền quyết toán:</span>
+                            <span class="metric-value val-settlement">${formatCurrency(data.totalSettlement)}</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Phí Affiliate:</span>
+                            <span class="metric-value">${formatCurrency(data.affiliateFee)}</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Thuế GTGT:</span>
+                            <span class="metric-value">${formatCurrency(data.taxGTGT)}</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Thuế TNCN:</span>
+                            <span class="metric-value">${formatCurrency(data.taxTNCN)}</span>
+                        </div>
+                        <div class="metric-row" style="background-color: #fff8e1; margin: 10px -20px -15px -20px; padding: 15px 20px; border-top: 1px solid #ffe0b2;">
+                            <span class="metric-label" style="font-weight:600;">Chi phí nền tảng:</span>
+                            <span class="metric-value val-platform">${formatCurrency(platformFee)}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        outputDiv.innerHTML = html;
+    };
+
+    // Events
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) processFile(e.target.files[0]);
+        e.target.value = ''; 
+    });
+
+    dropZone.addEventListener('click', (e) => {
+        fileInput.click();
+    });
+
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = '#ee4d2d';
+        dropZone.style.backgroundColor = '#fff5f2';
+    });
+
+    dropZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = '#bdc3c7';
+        dropZone.style.backgroundColor = '#fafafa';
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = '#bdc3c7';
+        dropZone.style.backgroundColor = '#fafafa';
+        if (e.dataTransfer.files.length > 0) {
+            processFile(e.dataTransfer.files[0]);
+        }
+    });
+</script>
+
+</body>
+</html>

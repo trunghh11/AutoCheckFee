@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok Shop Income Tool (V4 - Final)</title>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #fe2c55; /* TikTok Red */
+            --secondary: #25f4ee; /* TikTok Cyan */
+            --bg: #f2f4f8;
+            --text: #333;
+            --card-bg: #fff;
+        }
+
+        /* Ẩn input mặc định */
+        input[type="file"] {
+            display: none;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            letter-spacing: -1px;
+        }
+        .header h1 span { color: var(--primary); }
+        .header p { color: #666; font-size: 1.1em; }
+
+        /* Upload Area - New Design */
+        .upload-container {
+            background: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            padding: 40px;
+            text-align: center;
+            transition: transform 0.2s;
+        }
+        
+        .drop-zone {
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 50px 20px;
+            background: #f8fafc;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--primary);
+            background: #fff0f3;
+            transform: scale(1.01);
+        }
+
+        .icon-upload {
+            font-size: 48px;
+            margin-bottom: 15px;
+            color: #64748b;
+        }
+        
+        .drop-zone:hover .icon-upload { color: var(--primary); }
+
+        .btn-browse {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+            box-shadow: 0 4px 15px rgba(254, 44, 85, 0.3);
+            transition: all 0.2s;
+        }
+
+        .btn-browse:hover {
+            background: #e02045;
+            transform: translateY(-2px);
+        }
+
+        /* Results */
+        #results { margin-top: 40px; }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+            margin-bottom: 20px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+        }
+
+        .card-header {
+            background: #f8fafc;
+            padding: 15px 25px;
+            font-weight: 700;
+            font-size: 1.1em;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-body { padding: 10px 25px; }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px dashed #e2e8f0;
+        }
+
+        .metric-row:last-child { border-bottom: none; }
+
+        .label { color: #64748b; font-weight: 500; }
+        .value { font-family: 'Consolas', monospace; font-weight: 700; font-size: 1.05em; }
+
+        /* Summary Highlight */
+        .summary-card { border: 2px solid var(--secondary); }
+        .summary-card .card-header { background: #e0fcfb; color: #0f766e; }
+
+        /* Value Colors */
+        .val-rev { color: #2563eb; }
+        .val-settle { color: #16a34a; }
+        .val-refund { color: #dc2626; }
+        .val-ads { color: #9333ea; }
+        .val-platform { color: #ea580c; font-size: 1.2em; }
+
+        /* Debug */
+        #debug-log {
+            background: #1e293b;
+            color: #4ade80;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 30px;
+            display: none;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .btn-debug {
+            background: transparent;
+            color: #94a3b8;
+            border: 1px solid #cbd5e1;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-top: 20px;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>Tính Doanh Thu <span>TikTok Shop</span></h1>
+        <p>Phân tích file Order Details chính xác & bảo mật</p>
+    </div>
+
+    <div class="upload-container">
+        <div class="drop-zone" id="drop-zone">
+            <div class="icon-upload">☁️</div>
+            <h3 style="margin: 0; color: #334155;">Kéo thả file vào đây</h3>
+            <p style="color: #94a3b8; margin: 10px 0 20px;">Hỗ trợ file .xlsx hoặc .csv tải từ Seller Center</p>
+            <button class="btn-browse" onclick="document.getElementById('fileInput').click()">Chọn File Báo Cáo</button>
+            <input type="file" id="fileInput" accept=".xlsx, .csv">
+        </div>
+    </div>
+
+    <div id="results"></div>
+
+    <button class="btn-debug" onclick="toggleDebug()">🛠 Hiện thông tin kiểm tra (Debug)</button>
+    <div id="debug-log"></div>
+</div>
+
+<script>
+    // --- CẤU HÌNH TỪ KHÓA TÌM CỘT ---
+    const KEYWORDS = {
+        ORDER_ID: ["order", "id"],
+        CREATED_TIME: ["created time"],
+        SETTLED_TIME: ["settled time"],
+        REVENUE: ["total revenue"],
+        SETTLEMENT: ["settlement amount"],
+        TOTAL_FEES: ["total fees"],
+        VAT: ["vat withheld"],
+        PIT: ["pit withheld"],
+        // Quan trọng: Tìm cả "Adjustment" (đúng) và "Ajustment" (sai chính tả trong file TikTok)
+        ADJUSTMENT: ["ajustment amount", "adjustment amount"], 
+        AFF_COMMISSION: ["affiliate commission"],
+        AFF_SHOP_ADS: ["affiliate shop ads"],
+        AFF_PARTNER: ["affiliate partner commission"],
+        AFF_PARTNER_ADS: ["affiliate partner shop ads"]
+    };
+
+    const fileInput = document.getElementById('fileInput');
+    const dropZone = document.getElementById('drop-zone');
+    const resultsDiv = document.getElementById('results');
+    const debugDiv = document.getElementById('debug-log');
+    let isDebug = false;
+
+    // --- UTILS ---
+    const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
+    
+    function log(msg) {
+        console.log(msg);
+        debugDiv.innerHTML += msg + "\n";
+    }
+
+    function toggleDebug() {
+        isDebug = !isDebug;
+        debugDiv.style.display = isDebug ? 'block' : 'none';
+    }
+
+    // --- MAIN LOGIC ---
+
+    function handleFile(file) {
+        resultsDiv.innerHTML = '<div style="text-align:center; padding: 40px;"><p>⏳ Đang phân tích dữ liệu...</p></div>';
+        debugDiv.innerHTML = `🚀 START: ${file.name}\n`;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                processWorkbook(workbook);
+            } catch (err) {
+                alert("Lỗi đọc file: " + err.message);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    // Fix lỗi file Excel bị ẩn dòng (quan trọng)
+    function updateSheetRange(ws) {
+        let range = { s: { r: 10000000, c: 10000000 }, e: { r: 0, c: 0 } };
+        let hasCell = false;
+        Object.keys(ws).forEach(x => {
+            if (x.charAt(0) === '!') return;
+            hasCell = true;
+            const cell = XLSX.utils.decode_cell(x);
+            range.s.r = Math.min(range.s.r, cell.r);
+            range.s.c = Math.min(range.s.c, cell.c);
+            range.e.r = Math.max(range.e.r, cell.r);
+            range.e.c = Math.max(range.e.c, cell.c);
+        });
+        if (hasCell) ws['!ref'] = XLSX.utils.encode_range(range);
+    }
+
+    function processWorkbook(workbook) {
+        // 1. Tìm Sheet "Order details"
+        let sheetName = workbook.SheetNames.find(n => n.toLowerCase().includes("order details") || n.toLowerCase().includes("chi tiết"));
+        
+        // Quét nội dung nếu không tìm thấy tên
+        if (!sheetName) {
+            log("⚠️ Không tìm thấy tên sheet, đang quét nội dung...");
+            for (let name of workbook.SheetNames) {
+                const ws = workbook.Sheets[name];
+                updateSheetRange(ws);
+                const snippet = XLSX.utils.sheet_to_json(ws, {header: 1}).slice(0, 10);
+                if (JSON.stringify(snippet).toLowerCase().includes("total revenue")) {
+                    sheetName = name;
+                    break;
+                }
+            }
+        }
+        if (!sheetName) sheetName = workbook.SheetNames[0];
+
+        log(`👉 Đang đọc Sheet: [${sheetName}]`);
+        const ws = workbook.Sheets[sheetName];
+        updateSheetRange(ws);
+
+        const rawData = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+        log(`📊 Số dòng tìm thấy: ${rawData.length}`);
+
+        if (rawData.length < 2) {
+            resultsDiv.innerHTML = `<p style="color:red; text-align:center">File không có dữ liệu.</p>`;
+            return;
+        }
+
+        // 2. Map cột
+        const map = findColumnMapping(rawData);
+        if (map.headerRow === -1) {
+            resultsDiv.innerHTML = `<p style="color:red; text-align:center">Không tìm thấy cột 'Total Revenue'. Vui lòng kiểm tra file.</p>`;
+            return;
+        }
+
+        // 3. Tính toán
+        const stats = calculateStats(rawData, map);
+        renderUI(stats);
+    }
+
+    function findColumnMapping(rows) {
+        let mapping = { headerRow: -1, cols: {} };
+        
+        for (let i = 0; i < Math.min(rows.length, 100); i++) {
+            const row = rows[i].map(c => String(c).toLowerCase().trim());
+            
+            // Điều kiện Header: Có cột Revenue hoặc Order ID
+            if (row.some(c => c.includes("total revenue") || c === "revenue")) {
+                mapping.headerRow = i;
+                log(`📍 Header tại dòng: ${i + 1}`);
+
+                // Helper tìm index
+                const findIdx = (kws) => row.findIndex(cell => kws.some(k => cell.includes(k)));
+
+                mapping.cols = {
+                    REVENUE: findIdx(KEYWORDS.REVENUE),
+                    SETTLEMENT: findIdx(KEYWORDS.SETTLEMENT),
+                    TOTAL_FEES: findIdx(KEYWORDS.TOTAL_FEES),
+                    VAT: findIdx(KEYWORDS.VAT),
+                    PIT: findIdx(KEYWORDS.PIT),
+                    ADJUSTMENT: findIdx(KEYWORDS.ADJUSTMENT), // Tìm cột Ajustment/Adjustment
+                    CREATED_TIME: findIdx(KEYWORDS.CREATED_TIME),
+                    SETTLED_TIME: findIdx(KEYWORDS.SETTLED_TIME),
+                    
+                    AFF_COMMISSION: row.findIndex(c => c === "affiliate commission"),
+                    AFF_SHOP_ADS: row.findIndex(c => c.includes("affiliate shop ads") && !c.includes("pit")),
+                    AFF_PARTNER: findIdx(KEYWORDS.AFF_PARTNER),
+                    AFF_PARTNER_ADS: findIdx(KEYWORDS.AFF_PARTNER_ADS)
+                };
+
+                // Debug vị trí cột Adjustment
+                log(`🔍 Cột Adjustment Index: ${mapping.cols.ADJUSTMENT} (Tìm từ khóa: ${KEYWORDS.ADJUSTMENT.join(', ')})`);
+                break;
+            }
+        }
+        return mapping;
+    }
+
+    function parseNum(val) {
+        if (typeof val === 'number') return val;
+        if (!val) return 0;
+        if (typeof val === 'string') {
+            const clean = val.replace(/,/g, '').trim(); 
+            const num = parseFloat(clean);
+            return isNaN(num) ? 0 : num;
+        }
+        return 0;
+    }
+
+    function calculateStats(rows, map) {
+        const results = {};
+        const total = { revenue:0, settlement:0, refund:0, affiliate:0, vat:0, pit:0, platform:0, ads:0 };
+
+        for (let i = map.headerRow + 1; i < rows.length; i++) {
+            const row = rows[i];
+            
+            // Ngày tháng
+            let dateVal = map.cols.CREATED_TIME > -1 ? row[map.cols.CREATED_TIME] : null;
+            if (!dateVal && map.cols.SETTLED_TIME > -1) dateVal = row[map.cols.SETTLED_TIME];
+            if (!dateVal) continue;
+
+            let dateObj;
+            if (typeof dateVal === 'number') {
+                dateObj = XLSX.SSF.parse_date_code(dateVal);
+                dateObj = new Date(dateObj.y, dateObj.m - 1, dateObj.d);
+            } else {
+                dateObj = new Date(dateVal);
+            }
+            if (isNaN(dateObj.getTime())) continue;
+
+            const monthKey = `Tháng ${dateObj.getMonth() + 1}/${dateObj.getFullYear()}`;
+
+            // Giá trị
+            const rev = parseNum(row[map.cols.REVENUE]);
+            const settle = parseNum(row[map.cols.SETTLEMENT]);
+            const fees = parseNum(row[map.cols.TOTAL_FEES]);
+            const vat = parseNum(row[map.cols.VAT]);
+            const pit = parseNum(row[map.cols.PIT]);
+            const ads = parseNum(row[map.cols.ADJUSTMENT]); // Lấy giá trị cột Adjustment
+
+            let aff = 0;
+            if (map.cols.AFF_COMMISSION > -1) aff += parseNum(row[map.cols.AFF_COMMISSION]);
+            if (map.cols.AFF_SHOP_ADS > -1) aff += parseNum(row[map.cols.AFF_SHOP_ADS]);
+            if (map.cols.AFF_PARTNER > -1) aff += parseNum(row[map.cols.AFF_PARTNER]);
+            if (map.cols.AFF_PARTNER_ADS > -1) aff += parseNum(row[map.cols.AFF_PARTNER_ADS]);
+
+            const refund = rev < 0 ? rev : 0;
+            const platform = fees - aff - vat - pit;
+
+            // Init obj
+            if (!results[monthKey]) results[monthKey] = { revenue:0, settlement:0, refund:0, affiliate:0, vat:0, pit:0, platform:0, ads:0 };
+            
+            // Cộng dồn
+            const m = results[monthKey];
+            m.revenue += rev; m.settlement += settle; m.refund += refund; m.affiliate += aff; 
+            m.vat += vat; m.pit += pit; m.platform += platform; m.ads += ads;
+
+            total.revenue += rev; total.settlement += settle; total.refund += refund; total.affiliate += aff;
+            total.vat += vat; total.pit += pit; total.platform += platform; total.ads += ads;
+        }
+
+        return { monthly: results, total: total };
+    }
+
+    function renderUI(stats) {
+        let html = '';
+
+        const renderCard = (title, d, isSum = false) => `
+            <div class="card ${isSum ? 'summary-card' : ''}">
+                <div class="card-header">
+                    <span>${title}</span>
+                </div>
+                <div class="card-body">
+                    <div class="metric-row">
+                        <span class="label">Doanh thu quyết toán</span>
+                        <span class="value val-rev">${fmt(d.revenue)}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="label">Số tiền hàng bán trả lại</span>
+                        <span class="value val-refund">${fmt(d.refund)}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="label">Số tiền quyết toán (Về ví)</span>
+                        <span class="value val-settle">${fmt(d.settlement)}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="label">Phí Affiliate</span>
+                        <span class="value">${fmt(d.affiliate)}</span>
+                    </div>
+                    
+                    <div class="metric-row">
+                        <span class="label">Thuế GTGT (VAT)</span>
+                        <span class="value">${fmt(d.vat)}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="label">Thuế TNCN (PIT)</span>
+                        <span class="value">${fmt(d.pit)}</span>
+                    </div>
+
+                    <div class="metric-row">
+                        <span class="label">Phí Quảng cáo (Adjustment)</span>
+                        <span class="value val-ads">${fmt(d.ads)}</span>
+                    </div>
+
+                    <div class="metric-row" style="background: #fff7ed; margin: 10px -25px -10px -25px; padding: 15px 25px; border-top: 1px solid #ffedd5;">
+                        <span class="label" style="font-weight: 700; color: #c2410c;">Chi phí nền tảng</span>
+                        <span class="value val-platform">${fmt(d.platform)}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        html += renderCard("📊 TỔNG HỢP TOÀN BỘ", stats.total, true);
+
+        const sorted = Object.keys(stats.monthly).sort((a,b) => {
+            const [mA, yA] = a.replace("Tháng ","").split("/").map(Number);
+            const [mB, yB] = b.replace("Tháng ","").split("/").map(Number);
+            return yA - yB || mA - mB;
+        });
+
+        if (sorted.length > 0) {
+            html += `<h3 style="text-align:center; color:#94a3b8; margin: 40px 0 20px;">--- CHI TIẾT THEO THÁNG ---</h3>`;
+            sorted.forEach(m => html += renderCard(m, stats.monthly[m]));
+        } else {
+            html += `<p style="text-align:center; color:#64748b; margin-top:20px;">Không tìm thấy dữ liệu phù hợp.</p>`;
+        }
+
+        resultsDiv.innerHTML = html;
+    }
+
+    // --- DRAG & DROP EVENTS ---
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        if (files.length) handleFile(files[0]);
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length) handleFile(e.target.files[0]);
+        e.target.value = '';
+    });
+</script>
+
+</body>
+</html>

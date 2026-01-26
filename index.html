@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Công Cụ Tính Doanh Thu E-Commerce</title>
+    <style>
+        :root {
+            --shopee-orange: #ee4d2d;
+            --tiktok-black: #000000;
+            --tiktok-pink: #fe2c55;
+            --tiktok-cyan: #25f4ee;
+            --bg-color: #f8f9fa;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            text-align: center;
+            padding: 40px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+            max-width: 800px;
+            width: 90%;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        p.subtitle {
+            color: #666;
+            margin-bottom: 50px;
+            font-size: 1.1rem;
+        }
+
+        .card-container {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .card {
+            background: white;
+            border: 2px solid transparent;
+            border-radius: 16px;
+            padding: 40px 30px;
+            width: 250px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+        }
+
+        /* Shopee Card */
+        .card-shopee:hover {
+            border-color: var(--shopee-orange);
+            background: #fff5f2;
+        }
+        .icon-shopee {
+            font-size: 60px;
+            color: var(--shopee-orange);
+            margin-bottom: 20px;
+        }
+        .btn-shopee {
+            background: var(--shopee-orange);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-top: 15px;
+            display: inline-block;
+        }
+
+        /* TikTok Card */
+        .card-tiktok:hover {
+            border-color: var(--tiktok-pink);
+            background: #fff0f3;
+        }
+        .icon-tiktok {
+            font-size: 60px;
+            margin-bottom: 20px;
+            background: -webkit-linear-gradient(45deg, var(--tiktok-cyan), var(--tiktok-pink));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .btn-tiktok {
+            background: var(--tiktok-black);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-top: 15px;
+            display: inline-block;
+        }
+        
+        .btn-tiktok span {
+            color: var(--tiktok-pink);
+        }
+
+        h3 { margin: 0; font-size: 1.5rem; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Chọn Nền Tảng</h1>
+        <p class="subtitle">Bạn muốn phân tích doanh thu từ sàn nào?</p>
+
+        <div class="card-container">
+            <a href="shopee.html" class="card card-shopee">
+                <div class="icon-shopee">🛍️</div>
+                <h3>Shopee</h3>
+                <p style="color: #666; font-size: 0.9em;">Phân tích báo cáo Income</p>
+                <div class="btn-shopee">Truy cập Tool</div>
+            </a>
+
+            <a href="tiktok.html" class="card card-tiktok">
+                <div class="icon-tiktok">🎵</div>
+                <h3>TikTok Shop</h3>
+                <p style="color: #666; font-size: 0.9em;">Phân tích Order Details</p>
+                <div class="btn-tiktok">Truy cập <span>Tool</span></div>
+            </a>
+        </div>
+    </div>
+
+</body>
+</html>
