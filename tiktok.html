@@ -381,7 +381,7 @@
             if (item.settle > 0) dataByMonth[monthKey].normal.push(item);
             else if (item.settle === 0 && item.refund < 0) dataByMonth[monthKey].cancel.push(item);
             else if (item.settle < 0 && item.refund === 0) dataByMonth[monthKey].bom.push(item);
-            else if (item.settle < 0 && item.refund < 0) dataByMonth[monthKey].return.push(item);
+            else if (item.settle !== 0 && item.refund < 0) dataByMonth[monthKey].return.push(item);
             else {
                 console.log("Không phân loại được:", item);
             }
