@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok Shop Analyzer (V5)</title>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #fe2c55; /* TikTok Red */
+            --secondary: #25f4ee; /* TikTok Cyan */
+            --dark: #121212;
+            --bg: #f8f9fa;
+            --text: #333;
+            --card-bg: #fff;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 { margin: 0; font-size: 2em; }
+        .header h1 span { color: var(--primary); }
+
+        /* Upload Area */
+        .upload-container {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .drop-zone {
+            border: 2px dashed #cbd5e1;
+            border-radius: 8px;
+            padding: 30px;
+            background: #f8fafc;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .drop-zone:hover { border-color: var(--primary); background: #fff0f3; }
+        .btn-upload {
+            background: var(--dark); color: white; border: none;
+            padding: 10px 20px; border-radius: 6px; cursor: pointer;
+            margin-top: 15px; font-weight: 600;
+        }
+
+        /* Menu Selection */
+        #menu-selection {
+            display: none; /* Ẩn mặc định */
+            text-align: center;
+            margin: 30px 0;
+        }
+        .btn-choice {
+            padding: 20px 40px;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: bold;
+            margin: 0 15px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            width: 220px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .btn-choice:hover { transform: translateY(-3px); box-shadow: 0 8px 15px rgba(0,0,0,0.15); }
+        
+        .btn-cost { background: #e0f2f1; color: #00695c; border: 2px solid #00695c; }
+        .btn-order { background: #e3f2fd; color: #1565c0; border: 2px solid #1565c0; }
+        .icon-btn { font-size: 32px; margin-bottom: 10px; }
+
+        /* Results Area */
+        #results-container { display: none; }
+        .back-btn {
+            background: transparent; border: 1px solid #ccc; color: #666;
+            padding: 8px 15px; border-radius: 4px; cursor: pointer;
+            margin-bottom: 20px; font-size: 0.9em;
+        }
+        .back-btn:hover { background: #eee; color: #333; border-color: #999; }
+
+        /* --- STYLES CHO PHẦN CHI PHÍ (CŨ) --- */
+        .cost-card {
+            background: #fff; border: 1px solid #eee; border-radius: 8px;
+            margin-bottom: 15px; overflow: hidden;
+        }
+        .cost-header { background: #f1f1f1; padding: 10px 15px; font-weight: bold; }
+        .cost-body { padding: 10px 15px; }
+        .metric-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #eee; }
+        .val { font-family: monospace; font-weight: bold; }
+        .hl-platform { color: #ea580c; font-size: 1.1em; }
+        .summary-card { border: 2px solid var(--secondary); }
+
+        /* --- STYLES CHO PHẦN ĐƠN HÀNG (MỚI) --- */
+        .month-block { margin-bottom: 40px; border: 1px solid #e0e0e0; border-radius: 8px; background: white; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .month-title { background: #333; color: white; padding: 12px 20px; font-size: 1.2em; font-weight: bold; }
+        
+        .order-group { padding: 20px; border-bottom: 4px solid #f4f4f4; }
+        .order-group:last-child { border-bottom: none; }
+        
+        .group-header { font-size: 1.1em; font-weight: bold; margin-bottom: 15px; display: flex; align-items: center; }
+        .badge { padding: 4px 10px; border-radius: 20px; color: white; font-size: 0.8em; margin-right: 10px; min-width: 30px; text-align: center;}
+        
+        .bg-normal { background: #4CAF50; } /* Xanh lá */
+        .bg-cancel { background: #FF9800; } /* Cam */
+        .bg-bom { background: #9C27B0; }    /* Tím */
+        .bg-return { background: #F44336; }  /* Đỏ */
+
+        .table-responsive { overflow-x: auto; }
+        table.order-table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+        table.order-table th { background: #f8f9fa; padding: 10px; text-align: left; border-bottom: 2px solid #ddd; color: #555; }
+        table.order-table td { padding: 10px; border-bottom: 1px solid #eee; }
+        table.order-table tr:hover { background-color: #f9f9f9; }
+        .num-cell { font-family: monospace; text-align: right; font-weight: 500; }
+        
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>TikTok Shop <span>Analyzer V5</span></h1>
+    </div>
+
+    <div class="upload-container" id="upload-step">
+        <div class="drop-zone" id="drop-zone">
+            <div style="font-size: 40px;">📂</div>
+            <p>Kéo thả file <b>Order details</b> (.xlsx, .csv) vào đây</p>
+            <button class="btn-upload" onclick="document.getElementById('fileInput').click()">Chọn File</button>
+            <input type="file" id="fileInput" accept=".xlsx, .csv" style="display:none">
+        </div>
+    </div>
+
+    <div id="menu-selection">
+        <button class="btn-choice btn-order" onclick="runAnalysis('ORDER')">
+            <span class="icon-btn">📦</span>
+            Phân tích<br>Đơn hàng
+        </button>
+        <button class="btn-choice btn-cost" onclick="runAnalysis('COST')">
+            <span class="icon-btn">💰</span>
+            Phân tích<br>Chi phí
+        </button>
+    </div>
+
+    <div id="results-container">
+        <button class="back-btn" onclick="resetView()">← Quay lại Menu</button>
+        <div id="results-content"></div>
+    </div>
+
+</div>
+
+<script>
+    // --- CẤU HÌNH TỪ KHÓA ---
+    // Giữ nguyên logic từ khóa của bản V4
+    const KEYWORDS = {
+        ORDER_ID: ["order", "id"], 
+        TYPE: ["type"],            
+        CREATED_TIME: ["created time"],
+        REVENUE: ["total revenue"],
+        SETTLEMENT: ["settlement amount"],
+        TOTAL_FEES: ["total fees"],
+        VAT: ["vat withheld"],
+        PIT: ["pit withheld"],
+        ADJUSTMENT: ["ajustment", "adjustment"],
+        REFUND_SUB_SELLER: ["refund subtotal", "after seller"], // Cột mới cho V5
+        
+        AFF_COMMISSION: ["affiliate commission"],
+        AFF_SHOP_ADS: ["affiliate shop ads"],
+        AFF_PARTNER: ["affiliate partner commission"],
+        AFF_PARTNER_ADS: ["affiliate partner shop ads"]
+    };
+
+    // --- BIẾN TOÀN CỤC LƯU DỮ LIỆU ---
+    let GLOBAL_DATA = {
+        rawData: [], // Dữ liệu thô
+        map: {}      // Mapping cột
+    };
+
+    const fmt = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
+    
+    // --- XỬ LÝ SỰ KIỆN ---
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('fileInput');
+
+    fileInput.addEventListener('change', (e) => { if(e.target.files.length) handleFile(e.target.files[0]); e.target.value = ''; });
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.background = '#e3f2fd'; });
+    dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.style.background = '#f8fafc'; if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); });
+
+    // --- CÁC HÀM XỬ LÝ FILE (GIỮ NGUYÊN TỪ V4 ĐỂ ĐẢM BẢO KHÔNG LỖI) ---
+    function handleFile(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                processWorkbook(workbook);
+            } catch (err) {
+                alert("Lỗi đọc file: " + err.message);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    // Hàm Fix lỗi ẩn dòng (Quan trọng)
+    function updateSheetRange(ws) {
+        let range = { s: { r: 10000000, c: 10000000 }, e: { r: 0, c: 0 } };
+        let hasCell = false;
+        Object.keys(ws).forEach(x => {
+            if (x.charAt(0) === '!') return;
+            hasCell = true;
+            const cell = XLSX.utils.decode_cell(x);
+            range.s.r = Math.min(range.s.r, cell.r);
+            range.s.c = Math.min(range.s.c, cell.c);
+            range.e.r = Math.max(range.e.r, cell.r);
+            range.e.c = Math.max(range.e.c, cell.c);
+        });
+        if (hasCell) ws['!ref'] = XLSX.utils.encode_range(range);
+    }
+
+    function processWorkbook(workbook) {
+        // 1. Tìm Sheet
+        let sheetName = workbook.SheetNames.find(n => n.toLowerCase().includes("order details") || n.toLowerCase().includes("chi tiết"));
+        if (!sheetName) sheetName = workbook.SheetNames[0]; 
+
+        const ws = workbook.Sheets[sheetName];
+        updateSheetRange(ws); // Gọi hàm fix range
+
+        const rawData = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+        if (rawData.length < 2) { alert("File không có dữ liệu!"); return; }
+
+        // 2. Map cột
+        const map = findColumnMapping(rawData);
+        if (map.headerRow === -1) { alert("Không tìm thấy dòng tiêu đề hợp lệ (Total Revenue, Order ID...)"); return; }
+
+        // 3. Lưu vào biến toàn cục
+        GLOBAL_DATA.rawData = rawData;
+        GLOBAL_DATA.map = map;
+
+        // 4. Chuyển giao diện
+        document.getElementById('upload-step').style.display = 'none';
+        document.getElementById('menu-selection').style.display = 'block';
+    }
+
+    function findColumnMapping(rows) {
+        let mapping = { headerRow: -1, cols: {} };
+        for (let i = 0; i < Math.min(rows.length, 100); i++) {
+            const row = rows[i].map(c => String(c).toLowerCase().trim());
+            // Điều kiện tìm header: Có Total Revenue hoặc Order ID
+            if (row.some(c => c.includes("total revenue") || c === "revenue") || row.some(c => c.includes("order") && c.includes("id"))) {
+                mapping.headerRow = i;
+                const findIdx = (kws) => row.findIndex(cell => kws.some(k => cell.includes(k)));
+
+                mapping.cols = {
+                    ORDER_ID: findIdx(KEYWORDS.ORDER_ID),
+                    TYPE: findIdx(KEYWORDS.TYPE),
+                    CREATED_TIME: findIdx(KEYWORDS.CREATED_TIME),
+                    REVENUE: findIdx(KEYWORDS.REVENUE),
+                    SETTLEMENT: findIdx(KEYWORDS.SETTLEMENT),
+                    TOTAL_FEES: findIdx(KEYWORDS.TOTAL_FEES),
+                    VAT: findIdx(KEYWORDS.VAT),
+                    PIT: findIdx(KEYWORDS.PIT),
+                    ADJUSTMENT: findIdx(KEYWORDS.ADJUSTMENT),
+                    REFUND_SUB_SELLER: findIdx(KEYWORDS.REFUND_SUB_SELLER), // Cột cho Order Analysis
+                    
+                    AFF_COMMISSION: row.findIndex(c => c === "affiliate commission"),
+                    AFF_SHOP_ADS: row.findIndex(c => c.includes("affiliate shop ads") && !c.includes("pit")),
+                    AFF_PARTNER: findIdx(KEYWORDS.AFF_PARTNER),
+                    AFF_PARTNER_ADS: findIdx(KEYWORDS.AFF_PARTNER_ADS)
+                };
+                break;
+            }
+        }
+        return mapping;
+    }
+
+    // Hàm ép kiểu số (Quan trọng: Giữ nguyên logic cũ)
+    function parseNum(val) {
+        if (typeof val === 'number') return val;
+        if (!val) return 0;
+        if (typeof val === 'string') {
+            const clean = val.replace(/,/g, '').trim(); 
+            const num = parseFloat(clean);
+            return isNaN(num) ? 0 : num;
+        }
+        return 0;
+    }
+
+    // --- ĐIỀU HƯỚNG ---
+    function runAnalysis(mode) {
+        document.getElementById('menu-selection').style.display = 'none';
+        document.getElementById('results-container').style.display = 'block';
+        const content = document.getElementById('results-content');
+        content.innerHTML = '<p style="text-align:center; padding:20px;">⏳ Đang tính toán...</p>';
+
+        // Dùng timeout để UI render kịp
+        setTimeout(() => {
+            if (mode === 'COST') {
+                analyzeCost(content);
+            } else {
+                analyzeOrder(content);
+            }
+        }, 50);
+    }
+
+    function resetView() {
+        document.getElementById('results-container').style.display = 'none';
+        document.getElementById('menu-selection').style.display = 'block';
+    }
+
+    // ==========================================
+    // 1. PHÂN TÍCH CHI PHÍ (COST ANALYSIS)
+    // ==========================================
+    function analyzeCost(container) {
+        const rows = GLOBAL_DATA.rawData;
+        const map = GLOBAL_DATA.map;
+        
+        const results = {};
+        const total = { revenue:0, settlement:0, refund:0, affiliate:0, vat:0, pit:0, platform:0, ads:0 };
+
+        for (let i = map.headerRow + 1; i < rows.length; i++) {
+            const row = rows[i];
+            
+            // Ngày tháng
+            let dateVal = row[map.cols.CREATED_TIME];
+            if (!dateVal) continue;
+            let dateObj;
+            if (typeof dateVal === 'number') {
+                dateObj = XLSX.SSF.parse_date_code(dateVal);
+                dateObj = new Date(dateObj.y, dateObj.m - 1, dateObj.d);
+            } else {
+                dateObj = new Date(dateVal);
+            }
+            if (isNaN(dateObj.getTime())) continue;
+
+            const monthKey = `Tháng ${dateObj.getMonth() + 1}/${dateObj.getFullYear()}`;
+
+            // Parse số
+            const rev = parseNum(row[map.cols.REVENUE]);
+            const settle = parseNum(row[map.cols.SETTLEMENT]);
+            const fees = parseNum(row[map.cols.TOTAL_FEES]);
+            const vat = parseNum(row[map.cols.VAT]);
+            const pit = parseNum(row[map.cols.PIT]);
+            const ads = parseNum(row[map.cols.ADJUSTMENT]);
+            
+            let aff = 0;
+            if (map.cols.AFF_COMMISSION > -1) aff += parseNum(row[map.cols.AFF_COMMISSION]);
+            if (map.cols.AFF_SHOP_ADS > -1) aff += parseNum(row[map.cols.AFF_SHOP_ADS]);
+            if (map.cols.AFF_PARTNER > -1) aff += parseNum(row[map.cols.AFF_PARTNER]);
+            if (map.cols.AFF_PARTNER_ADS > -1) aff += parseNum(row[map.cols.AFF_PARTNER_ADS]);
+
+            // Logic cũ
+            const refund = rev < 0 ? rev : 0;
+            const platform = fees - aff - vat - pit;
+
+            if (!results[monthKey]) results[monthKey] = { revenue:0, settlement:0, refund:0, affiliate:0, vat:0, pit:0, platform:0, ads:0 };
+            
+            const m = results[monthKey];
+            m.revenue += rev; m.settlement += settle; m.refund += refund; m.affiliate += aff; 
+            m.vat += vat; m.pit += pit; m.platform += platform; m.ads += ads;
+
+            total.revenue += rev; total.settlement += settle; total.refund += refund; total.affiliate += aff;
+            total.vat += vat; total.pit += pit; total.platform += platform; total.ads += ads;
+        }
+
+        // Render HTML
+        let html = '';
+        const renderCard = (title, d, isSum=false) => `
+            <div class="cost-card ${isSum?'summary-card':''}" style="${isSum ? 'border:2px solid var(--secondary)' : ''}">
+                <div class="cost-header" style="${isSum ? 'background:#e0fcfb; color:#00695c' : ''}">${title}</div>
+                <div class="cost-body">
+                    <div class="metric-row"><span class="label">Doanh thu quyết toán</span><span class="val" style="color:#2196F3">${fmt(d.revenue)}</span></div>
+                    <div class="metric-row"><span class="label">Số tiền quyết toán (Về ví)</span><span class="val" style="color:#4CAF50">${fmt(d.settlement)}</span></div>
+                    <div class="metric-row"><span class="label">Phí Affiliate</span><span class="val">${fmt(d.affiliate)}</span></div>
+                    <div class="metric-row"><span class="label">Thuế GTGT</span><span class="val">${fmt(d.vat)}</span></div>
+                    <div class="metric-row"><span class="label">Thuế TNCN</span><span class="val">${fmt(d.pit)}</span></div>
+                    <div class="metric-row"><span class="label">Phí Quảng cáo (Adj)</span><span class="val" style="color:#9C27B0">${fmt(d.ads)}</span></div>
+                    <div class="metric-row" style="background:#fff3e0; margin-bottom:-10px; border-top:1px solid #ffe0b2; padding:12px 0;">
+                        <span class="label" style="font-weight:bold; color:#e65100">Chi phí nền tảng</span>
+                        <span class="val hl-platform">${fmt(d.platform)}</span>
+                    </div>
+                </div>
+            </div>`;
+
+        html += renderCard("📊 TỔNG HỢP TOÀN BỘ", total, true);
+
+        const sorted = Object.keys(results).sort((a,b) => {
+            const [mA, yA] = a.replace("Tháng ","").split("/").map(Number);
+            const [mB, yB] = b.replace("Tháng ","").split("/").map(Number);
+            return yA - yB || mA - mB;
+        });
+
+        html += `<h3 style="text-align:center; color:#666; margin:30px 0;">--- CHI TIẾT THEO THÁNG ---</h3>`;
+        sorted.forEach(k => html += renderCard(k, results[k]));
+        
+        container.innerHTML = html;
+    }
+
+    // ==========================================
+    // 2. PHÂN TÍCH ĐƠN HÀNG (ORDER ANALYSIS)
+    // ==========================================
+    function analyzeOrder(container) {
+        const rows = GLOBAL_DATA.rawData;
+        const map = GLOBAL_DATA.map;
+
+        // Check cột Refund
+        if (map.cols.REFUND_SUB_SELLER === -1) {
+            container.innerHTML = `<p style="color:red; text-align:center;">Lỗi: Không tìm thấy cột 'Refund subtotal after seller discounts'.<br>Vui lòng kiểm tra lại file.</p>`;
+            return;
+        }
+
+        const dataByMonth = {}; // Key: Month, Value: { normal:[], cancel:[], bom:[], return:[] }
+
+        for (let i = map.headerRow + 1; i < rows.length; i++) {
+            const row = rows[i];
+            
+            // 1. Lọc Type = "Order"
+            // Lưu ý: Cột Type có thể không tồn tại trong một số file cũ, nếu không có thì bỏ qua check này hoặc check theo logic khác.
+            // Ở đây ta giả định có cột Type.
+            let typeVal = (map.cols.TYPE > -1) ? row[map.cols.TYPE] : "Order"; 
+            if (map.cols.TYPE > -1 && String(typeVal).trim() !== "Order") continue;
+
+            // 2. Lấy ngày
+            let dateVal = row[map.cols.CREATED_TIME];
+            if (!dateVal) continue;
+            let dateObj;
+            if (typeof dateVal === 'number') {
+                dateObj = XLSX.SSF.parse_date_code(dateVal);
+                dateObj = new Date(dateObj.y, dateObj.m - 1, dateObj.d);
+            } else {
+                dateObj = new Date(dateVal);
+            }
+            if (isNaN(dateObj.getTime())) continue;
+
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const year = dateObj.getFullYear();
+            const dateStr = `${day}/${month}/${year}`;
+            const monthKey = `Tháng ${month}/${year}`;
+
+            // Init storage
+            if (!dataByMonth[monthKey]) {
+                dataByMonth[monthKey] = {
+                    normal: [], // Settlement > 0
+                    cancel: [], // Settlement = 0 && Refund < 0
+                    bom: [],    // Settlement < 0 && Refund = 0
+                    return: []  // Settlement < 0 && Refund < 0
+                };
+            }
+
+            // 3. Lấy giá trị
+            const orderId = row[map.cols.ORDER_ID];
+            const settle = parseNum(row[map.cols.SETTLEMENT]);
+            const refund = parseNum(row[map.cols.REFUND_SUB_SELLER]);
+
+            const item = { id: orderId, date: dateStr, settle: settle, refund: refund };
+
+            // 4. Phân loại
+            if (settle > 0) {
+                dataByMonth[monthKey].normal.push(item);
+            } else if (settle === 0 && refund < 0) {
+                dataByMonth[monthKey].cancel.push(item);
+            } else if (settle < 0 && refund === 0) {
+                dataByMonth[monthKey].bom.push(item);
+            } else if (settle < 0 && refund < 0) {
+                dataByMonth[monthKey].return.push(item);
+            }
+        }
+
+        // --- RENDER UI ---
+        let html = '';
+        const sortedMonths = Object.keys(dataByMonth).sort((a,b) => {
+            const [mA, yA] = a.replace("Tháng ","").split("/").map(Number);
+            const [mB, yB] = b.replace("Tháng ","").split("/").map(Number);
+            return yA - yB || mA - mB;
+        });
+
+        if (sortedMonths.length === 0) {
+            html = '<p style="text-align:center; padding:20px;">Không tìm thấy đơn hàng nào có Type="Order".</p>';
+        }
+
+        sortedMonths.forEach(mKey => {
+            const grp = dataByMonth[mKey];
+            html += `<div class="month-block">
+                <div class="month-title">${mKey}</div>`;
+            
+            // Helper render table
+            const renderTableSection = (title, items, badgeClass, isEmptyMsg) => {
+                let s = `<div class="order-group">
+                    <div class="group-header"><span class="badge ${badgeClass}">${items.length}</span> ${title}</div>`;
+                
+                if (items.length === 0) {
+                    s += `<div style="color:#999; font-style:italic; font-size:0.9em; padding-left:10px;">${isEmptyMsg}</div>`;
+                } else {
+                    s += `<div class="table-responsive"><table class="order-table">
+                        <thead><tr><th>Mã đơn hàng</th><th>Ngày tạo</th><th>Tiền quyết toán</th><th>Hoàn lại (Sau CK)</th></tr></thead>
+                        <tbody>`;
+                    items.forEach(it => {
+                        s += `<tr>
+                            <td>${it.id}</td>
+                            <td>${it.date}</td>
+                            <td class="num-cell" style="color:${it.settle>0?'#2e7d32':(it.settle<0?'#c62828':'#333')}">${fmt(it.settle)}</td>
+                            <td class="num-cell" style="color:${it.refund<0?'#c62828':'#333'}">${fmt(it.refund)}</td>
+                        </tr>`;
+                    });
+                    s += `</tbody></table></div>`;
+                }
+                s += `</div>`;
+                return s;
+            };
+
+            // 1. Đơn bình thường
+            html += renderTableSection("Đơn thành công (Bình thường)", grp.normal, "bg-normal", "Không có dữ liệu.");
+            
+            // 2. Đơn hủy
+            html += renderTableSection("Đơn hủy (Thanh toán trước nhưng hủy)", grp.cancel, "bg-cancel", "Không có dữ liệu.");
+
+            // 3. Đơn bom
+            html += renderTableSection("Đơn Bom / Hàng mẫu (Settlement < 0, Refund = 0)", grp.bom, "bg-bom", "Không có dữ liệu.");
+
+            // 4. Đơn hoàn trả
+            html += renderTableSection("Đơn Hoàn trả / Trả hàng (Cần theo dõi)", grp.return, "bg-return", "Không có dữ liệu.");
+
+            html += `</div>`; // End month-block
+        });
+
+        container.innerHTML = html;
+    }
+
+</script>
+
+</body>
+</html>
