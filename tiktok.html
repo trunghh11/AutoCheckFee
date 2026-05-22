@@ -237,8 +237,8 @@
                     SETTLEMENT: findIdx(KEYWORDS.SETTLEMENT), TOTAL_FEES: findIdx(KEYWORDS.TOTAL_FEES),
                     VAT: findIdx(KEYWORDS.VAT), PIT: findIdx(KEYWORDS.PIT), ADJUSTMENT: findIdx(KEYWORDS.ADJUSTMENT),
                     REFUND_SUB_SELLER: findIdx(KEYWORDS.REFUND_SUB_SELLER),
-                    AFF_COMMISSION: row.findIndex(c => c === "affiliate commission"),
-                    AFF_SHOP_ADS: row.findIndex(c => c.includes("affiliate shop ads") && !c.includes("pit")),
+                    AFF_COMMISSION: row.findIndex(c => c === "Hoa hồng liên kết"),
+                    AFF_SHOP_ADS: row.findIndex(c => c.includes("Hoa hồng Quảng cáo") && !c.includes("TNCN")),
                     AFF_PARTNER: findIdx(KEYWORDS.AFF_PARTNER), AFF_PARTNER_ADS: findIdx(KEYWORDS.AFF_PARTNER_ADS)
                 };
                 break;
@@ -344,8 +344,8 @@
         for (let i = map.headerRow + 1; i < rows.length; i++) {
             const row = rows[i];
             console.log("Xử lý:", row[map.cols.ORDER_ID]);
-            let typeVal = (map.cols.TYPE > -1) ? row[map.cols.TYPE] : "Order"; 
-            if (map.cols.TYPE > -1 && String(typeVal).trim() !== "Order") {
+            let typeVal = (map.cols.TYPE > -1) ? row[map.cols.TYPE] : "Đơn hàng"; 
+            if (map.cols.TYPE > -1 && String(typeVal).trim() !== "Đơn hàng") {
               console.log("Bỏ do lỗi type:", row);
               continue;
             }
@@ -394,7 +394,7 @@
             return yA - yB || mA - mB;
         });
 
-        if (sorted.length === 0) html = '<p style="text-align:center;">Không tìm thấy đơn hàng Type="Order".</p>';
+        if (sorted.length === 0) html = '<p style="text-align:center;">Không tìm thấy đơn hàng Type="Đơn hàng".</p>';
 
         sorted.forEach(mKey => {
             const grp = dataByMonth[mKey];
