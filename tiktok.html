@@ -228,7 +228,7 @@
         let mapping = { headerRow: -1, cols: {} };
         for (let i = 0; i < Math.min(rows.length, 100); i++) {
             const row = rows[i].map(c => String(c).toLowerCase().trim());
-            if (row.some(c => c.includes("total revenue") || c === "revenue")) {
+            if (row.some(c => c.includes("Tổng doanh thu") || c === "doanh thu")) {
                 mapping.headerRow = i;
                 const findIdx = (kws) => row.findIndex(cell => kws.some(k => cell.includes(k)));
                 mapping.cols = {
